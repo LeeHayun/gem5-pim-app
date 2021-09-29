@@ -44,7 +44,6 @@ int main(int argc, const char **argv) {
     }
 
     uint64_t cycles = args::get(num_cycles_arg);
-    std::string output_dir = args::get(output_dir_arg);
     std::string pim_api = args::get(pim_api_arg);
 
     // Initialize modules of PIM-Simulator
@@ -119,8 +118,6 @@ int main(int argc, const char **argv) {
 
     // Calculate error between the result of PIM computation and actual answer
     tx_generator->CheckResult();
-
-    tx_generator->PrintStats();
 
     delete tx_generator;
 

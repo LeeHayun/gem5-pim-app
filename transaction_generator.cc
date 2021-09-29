@@ -2,16 +2,27 @@
 
 using half_float::half;
 
+Address TransactionGenerator::AddressMapping(uint64_t hex_addr) const {
+    hex_addr >>= shift_bits_;
+    int channel = (hex_addr >> ch_pos_) & ch_mask_;
+    int rank = (hex_addr >> ra_pos_) & ra_mask_;
+    int bg = (hex_addr >> bg_pos_) & bg_mask_;
+    int ba = (hex_addr >> ba_pos_) & ba_mask_;
+    int ro = (hex_addr >> ro_pos_) & ro_mask_;
+    int co = (hex_addr >> co_pos_) & co_mask_;
+    return Address(channel, rank, bg, ba, ro, co);
+}
+
 // Map 64-bit hex_address into structured address
 uint64_t TransactionGenerator::ReverseAddressMapping(Address& addr) {
     uint64_t hex_addr = 0;
-    hex_addr += ((uint64_t)addr.channel) << config_->ch_pos;
-    hex_addr += ((uint64_t)addr.rank) << config_->ra_pos;
-    hex_addr += ((uint64_t)addr.bankgroup) << config_->bg_pos;
-    hex_addr += ((uint64_t)addr.bank) << config_->ba_pos;
-    hex_addr += ((uint64_t)addr.row) << config_->ro_pos;
-    hex_addr += ((uint64_t)addr.column) << config_->co_pos;
-    return hex_addr << config_->shift_bits;
+    hex_addr += ((uint64_t)addr.channel) << ch_pos_;
+    hex_addr += ((uint64_t)addr.rank) << ra_pos_;
+    hex_addr += ((uint64_t)addr.bankgroup) << bg_pos_;
+    hex_addr += ((uint64_t)addr.bank) << ba_pos_;
+    hex_addr += ((uint64_t)addr.row) << ro_pos_;
+    hex_addr += ((uint64_t)addr.column) << co_pos_;
+    return hex_addr << shift_bits_;
 }
 
 // Returns the minimum multiple of stride that is higher than num
@@ -374,7 +385,7 @@ void GemvTransactionGenerator::ExecuteBank(int bank) {
             for (int ch = 0; ch < NUM_CHANNEL; ch++) {
                 Address addr(ch, 0, 0, bank, MAP_SRF, 0);
                 uint64_t hex_addr = ReverseAddressMapping(addr);
-                Address addr1 = config_->AddressMapping(hex_addr);
+                Address addr1 = AddressMapping(hex_addr);
                 TryAddTransaction(hex_addr, true, data_temp_);
             }
             Barrier();

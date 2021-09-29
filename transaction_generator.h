@@ -6,10 +6,14 @@
 #include <stdlib.h>
 #include <string>
 #include <cstdint>
-#include "./configuration.h"
-#include "./common.h"
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <iostream>
+#include <unistd.h>
 #include "./pim_config.h"
 #include "./half.hpp"
+#include "./PIM-DD.h"
 
 #define EVEN_BANK 0
 #define ODD_BANK  1
@@ -57,7 +61,7 @@ struct Address {
     int bank;
     int row;
     int column;
-}
+};
 
 class TransactionGenerator {
  public:
@@ -73,7 +77,7 @@ class TransactionGenerator {
         pmemAddr_ = (uint8_t *) mmap(NULL, LEN_PIM,
                                      PROT_READ | PROT_WRITE,
                                      MAP_PRIVATE,
-                                     fd, 0);
+                                     fd_, 0);
         if (pmemAddr_ == (uint8_t*) MAP_FAILED)
             perror("mmap");
 
@@ -81,14 +85,20 @@ class TransactionGenerator {
 
         burstSize_ = 32;
 
-        data_temp_ = (uint8_t *) malloc(burstSize_);
-
         ch_pos_ = 0;
         ba_pos_ = ch_pos_ + 4;
-        bg_pos_ = ba_pos_ + 4;
-        co_pos_ = bg_pos_ + 0;
+        bg_pos_ = ba_pos_ + 2;
+        co_pos_ = bg_pos_ + 2;
         ra_pos_ = co_pos_ + 5;
+        ro_pos_ = ra_pos_ + 0;
         shift_bits_ = 5;
+
+        ch_mask_ = (1 << 4) - 1;
+        ra_mask_ = (1 << 0) - 1;
+        bg_mask_ = (1 << 2) - 1;
+        ba_mask_ = (1 << 2) - 1;
+        ro_mask_ = (1 << 14) - 1;
+        co_mask_ = (1 << 5) - 1;
     }
     ~TransactionGenerator() {
         munmap(pmemAddr_, LEN_PIM);
@@ -101,6 +111,7 @@ class TransactionGenerator {
     virtual void GetResult() = 0;
     virtual void CheckResult() = 0;
 
+    Address AddressMapping(uint64_t hex_addr) const;
     uint64_t ReverseAddressMapping(Address& addr);
     uint64_t Ceiling(uint64_t num, uint64_t stride);
     void TryAddTransaction(uint64_t hex_addr, bool is_write, uint8_t *DataPtr);
@@ -114,13 +125,9 @@ class TransactionGenerator {
     uint8_t data_temp_[32];
     uint8_t write_data_[32];
 
-    int ch_pos_;
-    int ra_pos_;
-    int bg_pos_;
-    int ba_pos_;
-    int ro_pos_;
-    int co_pos_;
     int shift_bits_;
+    int ch_pos_, ra_pos_, bg_pos_, ba_pos_, ro_pos_, co_pos_;
+    uint64_t ch_mask_, ra_mask_, bg_mask_, ba_mask_, ro_mask_, co_mask_;
 };
 
 class AddTransactionGenerator : public TransactionGenerator {
